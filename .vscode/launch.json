@@ -29,9 +29,14 @@
             "program": "${workspaceFolder}/src/node/LibplanetConsole.Nodes.Executable/bin/Debug/net8.0/libplanet-node.dll",
             "console": "integratedTerminal",
             "args": [
+                "--private-key",
+                "b05c8b2bc981219c2afc32725f1dd7bdfce356ac7382699cb74647ab20895e32",
                 "--end-point",
                 "127.0.0.1:5353",
-                "--explorer-end-point"
+                "--explorer-end-point",
+                "127.0.0.1:5001",
+                "--store-path",
+                ".store"
             ]
         },
         {
@@ -41,6 +46,8 @@
             "program": "${workspaceFolder}/src/client/LibplanetConsole.Clients.Executable/bin/Debug/net8.0/libplanet-client.dll",
             "console": "integratedTerminal",
             "args": [
+                "--private-key",
+                "698e1dc854bfba5c359710ded3770010aa58625c2fe6ee1765ed9d0cf99c6b0d",
                 "--node-end-point",
                 "127.0.0.1:5353"
             ]
@@ -80,6 +87,13 @@
             "configurations": [
                 "C#: Libplanet Two Nodes (1/2)",
                 "C#: Libplanet Two Nodes (2/2)"
+            ]
+        },
+        {
+            "name": "Node and Client",
+            "configurations": [
+                "C#: Libplanet Node",
+                "C#: Libplanet Client"
             ]
         }
     ]

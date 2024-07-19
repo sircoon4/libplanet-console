@@ -1,10 +1,10 @@
 ﻿using System.Reflection;
 using Libplanet.Blockchain;
 using Libplanet.Explorer.Indexing;
-using Libplanet.Explorer.Interfaces;
 using Libplanet.Net;
 using Libplanet.Store;
 using LibplanetConsole.Common.Extensions;
+using LibplanetConsole.Explorer.Interfaces;
 
 namespace LibplanetConsole.Nodes.Explorer;
 
@@ -35,4 +35,6 @@ internal sealed class BlockChainContext(INode node) : IBlockChainContext
     public Swarm Swarm => node.GetService<Swarm>();
 
     public IBlockChainIndex Index => throw new NotSupportedException();
+
+    public INode Node => node;
 }
