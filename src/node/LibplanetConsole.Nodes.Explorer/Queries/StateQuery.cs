@@ -1,9 +1,14 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
+using Bencodex;
+using Bencodex.Types;
 using GraphQL;
 using GraphQL.Types;
 using Libplanet.Action.State;
 using Libplanet.Common;
 using Libplanet.Crypto;
+using Libplanet.Store.Trie;
+using Libplanet.Store.Trie.Nodes;
 using Libplanet.Types.Assets;
 using Libplanet.Types.Blocks;
 using LibplanetConsole.Explorer.GraphTypes;
@@ -85,8 +90,42 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
                     "Either blockHash or stateRootHash must be specified."
                 );
             case (blockhash: not null, _):
+                var trie = (MerkleTrie)context.Source.GetWorldState((BlockHash)blockHash).Trie;
+                foreach (var (key, value) in trie.IterateValues())
+                {
+                    KeyBytes keyBytes = key;
+                    var keyString = System.Text.Encoding.UTF8.GetString(keyBytes.ToByteArray());
+                    IValue bencodexValue = value;
+                    string bencodexString;
+                    if (bencodexValue is Binary)
+                    {
+                        bencodexString = ((Binary)bencodexValue).ToHex();
+                    }
+                    else
+                    {
+                        bencodexString = bencodexValue.Inspect();
+                    }
+
+                    Debug.WriteLine($"{keyString}: {bencodexString}");
+                }
                 return context.Source.GetWorldState((BlockHash)blockHash);
             case (_, srh: not null):
+                var trie2 = (MerkleTrie)context.Source.GetWorldState(stateRootHash).Trie;
+                foreach (var item in trie2.IterateNodes())
+                {
+                    var (nibbles, _) = item;
+                    if (item.Node is ValueNode valueNode)
+                    {
+                        var kb = nibbles.ToKeyBytes();
+                        string keyString = System.Text.Encoding.UTF8.GetString(kb.ToByteArray());
+                        Debug.WriteLine($"key: {keyString}");
+
+                        if (valueNode.Value is Binary binary)
+                        {
+                            Debug.WriteLine($"value: {binary.ToHex()}");
+                        }
+                    }
+                }
                 return context.Source.GetWorldState(stateRootHash);
         }
     }
@@ -221,5 +260,61 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
                     .GetWorldState(offsetStateRootHash)
                     .GetValidatorSet().Validators;
         }
+    }
+
+    private static object? ResolveInclusionProof(IResolveFieldContext<IBlockChainStates> context)
+    {
+        var codec = new Codec();
+        Address address = context.GetArgument<Address>("address");
+        IValue value = codec.Decode(
+            ByteUtil.ParseHex(
+                context.GetArgument<string>("value")));
+        HashDigest<SHA256> stateRootHash = context.GetArgument<HashDigest<SHA256>>("stateRootHash");
+
+        var trie = (MerkleTrie)context.Source.GetWorldState(stateRootHash).Trie;
+
+        var key = ToStateKey(address);
+        var proof = trie.GenerateProof(key, value);
+        var bencodedProof = new List();
+
+        foreach (var node in proof)
+        {
+            bencodedProof.Add(node.ToBencodex());
+        }
+
+        return (IValue)bencodedProof;
+    }
+
+    private static readonly byte[] _conversionTable =
+    {
+        48,  // '0'
+        49,  // '1'
+        50,  // '2'
+        51,  // '3'
+        52,  // '4'
+        53,  // '5'
+        54,  // '6'
+        55,  // '7'
+        56,  // '8'
+        57,  // '9'
+        97,  // 'a'
+        98,  // 'b'
+        99,  // 'c'
+        100, // 'd'
+        101, // 'e'
+        102, // 'f'
+    };
+
+    private static KeyBytes ToStateKey(Address address)
+    {
+        var addressBytes = address.ByteArray;
+        byte[] buffer = new byte[addressBytes.Length * 2];
+        for (int i = 0; i < addressBytes.Length; i++)
+        {
+            buffer[i * 2] = _conversionTable[addressBytes[i] >> 4];
+            buffer[i * 2 + 1] = _conversionTable[addressBytes[i] & 0xf];
+        }
+
+        return new KeyBytes(buffer);
     }
 }

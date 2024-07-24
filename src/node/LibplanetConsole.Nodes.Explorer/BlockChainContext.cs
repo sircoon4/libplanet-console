@@ -34,7 +34,7 @@ internal sealed class BlockChainContext(INode node) : IBlockChainContext
 
     public Swarm Swarm => node.GetService<Swarm>();
 
-    public IBlockChainIndex Index => throw new NotSupportedException();
+    public IBlockChainIndex Index => null;
 
     public INode Node => node;
 }
