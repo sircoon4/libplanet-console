@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Security.Cryptography;
 using Bencodex;
 using Bencodex.Types;
 using GraphQL;
@@ -8,6 +9,7 @@ using GraphQL.Types;
 using Libplanet.Blockchain;
 using Libplanet.Common;
 using Libplanet.Crypto;
+using Libplanet.Store.Trie;
 using Libplanet.Types.Blocks;
 using Libplanet.Types.Tx;
 using LibplanetConsole.Explorer.GraphTypes;
@@ -255,6 +257,63 @@ namespace LibplanetConsole.Explorer.Queries
                                 null,
                                 null);
                     }
+                }
+            );
+
+            Field<NonNullGraphType<InclusionProofType>>(
+                name: "transactionWorldProof",
+                arguments: new QueryArguments(
+                    new QueryArgument<NonNullGraphType<IdGraphType>>
+                    {
+                        Name = "txId",
+                        Description = "transaction id.",
+                    }
+                ),
+                resolve: context =>
+                {
+                    HashDigest<SHA256> stateRootHash;
+                    IValue proof;
+                    KeyBytes key;
+                    IValue value;
+
+                    var blockChain = _context.BlockChain;
+                    var txId = new TxId(ByteUtil.ParseHex(context.GetArgument<string>("txId"))
+                        ?? throw new ArgumentException("Given txId cannot be null."));
+
+                    if (GetBlockContainingTx(_context, txId) is { } block)
+                    {
+                        if (blockChain.GetTxExecution(block.Hash, txId) is { } execution)
+                        {
+                            stateRootHash = execution.OutputState
+                                ?? throw new InvalidOperationException("Output state is null.");
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Execution is null.");
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException(
+                            "Block is not containing the transaction.");
+                    }
+
+                    var transaction = ExplorerQuery.GetTransaction(txId);
+                    key = ExplorerQuery.ToStateKey(transaction.Signer);
+
+                    var trie = (MerkleTrie)blockChain.GetWorldState(stateRootHash).Trie;
+                    value = trie.Get(key)
+                        ?? throw new InvalidOperationException("Value is null.");
+
+                    var proofList = trie.GenerateProof(key, value);
+                    proof = new List();
+
+                    foreach (var item in proofList)
+                    {
+                        proof = ((List)proof).Add(item.ToBencodex());
+                    }
+
+                    return new InclusionProof(stateRootHash, proof, key, value);
                 }
             );
 

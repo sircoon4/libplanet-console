@@ -6,6 +6,7 @@ using Libplanet.Blockchain;
 using Libplanet.Crypto;
 using Libplanet.Explorer.Indexing;
 using Libplanet.Store;
+using Libplanet.Store.Trie;
 using Libplanet.Types.Blocks;
 using Libplanet.Types.Evidence;
 using Libplanet.Types.Tx;
@@ -221,6 +222,39 @@ namespace LibplanetConsole.Explorer.Queries
             }
 
             return true;
+        }
+
+        private static readonly byte[] _conversionTable =
+        {
+            48,  // '0'
+            49,  // '1'
+            50,  // '2'
+            51,  // '3'
+            52,  // '4'
+            53,  // '5'
+            54,  // '6'
+            55,  // '7'
+            56,  // '8'
+            57,  // '9'
+            97,  // 'a'
+            98,  // 'b'
+            99,  // 'c'
+            100, // 'd'
+            101, // 'e'
+            102, // 'f'
+        };
+
+        internal static KeyBytes ToStateKey(Address address)
+        {
+            var addressBytes = address.ByteArray;
+            byte[] buffer = new byte[addressBytes.Length * 2];
+            for (int i = 0; i < addressBytes.Length; i++)
+            {
+                buffer[i * 2] = _conversionTable[addressBytes[i] >> 4];
+                buffer[i * 2 + 1] = _conversionTable[addressBytes[i] & 0xf];
+            }
+
+            return new KeyBytes(buffer);
         }
     }
 }

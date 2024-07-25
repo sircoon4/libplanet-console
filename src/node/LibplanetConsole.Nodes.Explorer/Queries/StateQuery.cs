@@ -71,6 +71,25 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
             ),
             resolve: ResolveValidatorSet
         );
+        Field<NonNullGraphType<IValueType>>(
+            "proof",
+            description: "Retrieves inclusion proof of the given address and value.",
+            arguments: new QueryArguments(
+                new QueryArgument<NonNullGraphType<AddressType>>
+                {
+                    Name = "address",
+                },
+                new QueryArgument<NonNullGraphType<StringGraphType>>
+                {
+                    Name = "value",
+                },
+                new QueryArgument<NonNullGraphType<HashDigestSHA256Type>>
+                {
+                    Name = "stateRootHash",
+                }
+            ),
+            resolve: ResolveInclusionProof
+        );
     }
 
     private static object ResolveWorldState(IResolveFieldContext<IBlockChainStates> context)
@@ -78,6 +97,8 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
         BlockHash? blockHash = context.GetArgument<BlockHash?>("blockHash");
         HashDigest<SHA256>? stateRootHash =
             context.GetArgument<HashDigest<SHA256>?>("stateRootHash");
+
+        Codec codec = new Codec();
 
         switch (blockhash: blockHash, srh: stateRootHash)
         {
@@ -123,6 +144,8 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
                         if (valueNode.Value is Binary binary)
                         {
                             Debug.WriteLine($"value: {binary.ToHex()}");
+                            string bencodedString = ByteUtil.Hex(codec.Encode(binary));
+                            Debug.WriteLine($"bencoded: {bencodedString}");
                         }
                     }
                 }
@@ -273,48 +296,29 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
 
         var trie = (MerkleTrie)context.Source.GetWorldState(stateRootHash).Trie;
 
-        var key = ToStateKey(address);
+        foreach (var item in trie.IterateNodes())
+        {
+            var (nibbles, node) = item;
+            if (nibbles.Length == 0)
+            {
+                continue;
+            }
+
+            Debug.WriteLine($"Node key: {nibbles.Hex}");
+            IValue nodeValue = node.ToBencodex();
+            string nodeString = nodeValue.Inspect();
+            Debug.WriteLine($"Value node: {nodeString}");
+        }
+
+        var key = ExplorerQuery.ToStateKey(address);
         var proof = trie.GenerateProof(key, value);
         var bencodedProof = new List();
 
         foreach (var node in proof)
         {
-            bencodedProof.Add(node.ToBencodex());
+            bencodedProof = bencodedProof.Add(node.ToBencodex());
         }
 
         return (IValue)bencodedProof;
-    }
-
-    private static readonly byte[] _conversionTable =
-    {
-        48,  // '0'
-        49,  // '1'
-        50,  // '2'
-        51,  // '3'
-        52,  // '4'
-        53,  // '5'
-        54,  // '6'
-        55,  // '7'
-        56,  // '8'
-        57,  // '9'
-        97,  // 'a'
-        98,  // 'b'
-        99,  // 'c'
-        100, // 'd'
-        101, // 'e'
-        102, // 'f'
-    };
-
-    private static KeyBytes ToStateKey(Address address)
-    {
-        var addressBytes = address.ByteArray;
-        byte[] buffer = new byte[addressBytes.Length * 2];
-        for (int i = 0; i < addressBytes.Length; i++)
-        {
-            buffer[i * 2] = _conversionTable[addressBytes[i] >> 4];
-            buffer[i * 2 + 1] = _conversionTable[addressBytes[i] & 0xf];
-        }
-
-        return new KeyBytes(buffer);
     }
 }
