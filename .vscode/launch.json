@@ -55,6 +55,17 @@
             ]
         },
         {
+          "name": "C#: Libplanet Random Client",
+          "type": "coreclr",
+          "request": "launch",
+          "program": "${workspaceFolder}/src/client/LibplanetConsole.Clients.Executable/bin/Debug/net8.0/libplanet-client.dll",
+          "console": "integratedTerminal",
+          "args": [
+              "--node-end-point",
+              "127.0.0.1:5353"
+          ]
+      },
+        {
             "name": "C#: Libplanet Two Nodes (1/2)",
             "type": "coreclr",
             "request": "launch",
