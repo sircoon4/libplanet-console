@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Security;
 using System.Security.Cryptography;
-using System.Text;
 using Bencodex.Types;
 using Libplanet.Action;
 using Libplanet.Action.Loader;
@@ -20,13 +19,13 @@ using LibplanetConsole.Common.Actions;
 using LibplanetConsole.Common.Exceptions;
 using LibplanetConsole.Common.Extensions;
 using LibplanetConsole.Frameworks;
-using LibplanetConsole.Nodes.Serializations;
 using LibplanetConsole.Seeds;
 using Serilog;
+using static LibplanetConsole.Nodes.PeerUtility;
 
 namespace LibplanetConsole.Nodes;
 
-internal sealed class Node : IActionRenderer, INode, IApplicationService
+internal sealed partial class Node : IActionRenderer, INode, IApplicationService
 {
     private readonly SecureString _privateKey;
     private readonly string _storePath;
@@ -63,7 +62,7 @@ internal sealed class Node : IActionRenderer, INode, IApplicationService
             GenesisOptions = new GenesisOptions
             {
                 GenesisKey = (AppPrivateKey)BlockChainUtility.AppProtocolKey,
-                GenesisValidators = options.GenesisValidators,
+                GenesisValidators = options.Validators,
                 Timestamp = DateTimeOffset.UtcNow,
             },
         };
@@ -111,7 +110,7 @@ internal sealed class Node : IActionRenderer, INode, IApplicationService
         {
             if (_swarm is not null)
             {
-                return [.. _swarm.Peers.Select(item => (AppPeer)item)];
+                return [.. _swarm.Peers.Select(item => ToAppPeer(item))];
             }
 
             throw new InvalidOperationException();
@@ -149,68 +148,6 @@ internal sealed class Node : IActionRenderer, INode, IApplicationService
 
     public byte[] Sign(object obj) => AppPrivateKey.FromSecureString(_privateKey).Sign(obj);
 
-    public Task<AppId> AddTransactionAsync(IAction[] values, CancellationToken cancellationToken)
-        => AddTransactionAsync(
-            AppPrivateKey.FromSecureString(_privateKey), values, cancellationToken);
-
-    public async Task<AppId> AddTransactionAsync(
-        AppPrivateKey privateKey, IAction[] actions, CancellationToken cancellationToken)
-    {
-        ObjectDisposedExceptionUtility.ThrowIf(_isDisposed, this);
-        InvalidOperationExceptionUtility.ThrowIf(
-            condition: IsRunning != true,
-            message: "Node is not running.");
-
-        var blockChain = BlockChain;
-        var genesisBlock = blockChain.Genesis;
-        var nonce = blockChain.GetNextTxNonce((Address)privateKey.Address);
-        var values = actions.Select(item => item.PlainValue).ToArray();
-        var transaction = Transaction.Create(
-            nonce: nonce,
-            privateKey: (PrivateKey)privateKey,
-            genesisHash: genesisBlock.Hash,
-            actions: new TxActionList(values));
-        await AddTransactionAsync(transaction, cancellationToken);
-        return (AppId)transaction.Id;
-    }
-
-    public async Task AddTransactionAsync(
-        Transaction transaction, CancellationToken cancellationToken)
-    {
-        ObjectDisposedExceptionUtility.ThrowIf(_isDisposed, this);
-        InvalidOperationExceptionUtility.ThrowIf(
-            condition: IsRunning != true,
-            message: "Node is not running.");
-
-        _logger.Debug("Node adds a transaction: {AppId}", transaction.Id);
-        var blockChain = BlockChain;
-        var manualResetEvent = _eventByTxId.GetOrAdd(transaction.Id, _ =>
-        {
-            return new ManualResetEvent(initialState: false);
-        });
-        blockChain.StageTransaction(transaction);
-        await Task.Run(manualResetEvent.WaitOne, cancellationToken);
-
-        _eventByTxId.TryRemove(transaction.Id, out _);
-
-        var sb = new StringBuilder();
-        foreach (var item in transaction.Actions)
-        {
-            if (_exceptionByAction.TryRemove(item, out var exception) == true &&
-                exception is UnexpectedlyTerminatedActionException)
-            {
-                sb.AppendLine($"{exception.InnerException}");
-            }
-        }
-
-        if (sb.Length > 0)
-        {
-            throw new InvalidOperationException(sb.ToString());
-        }
-
-        _logger.Debug("Node added a transaction: {AppId}", transaction.Id);
-    }
-
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedExceptionUtility.ThrowIf(_isDisposed, this);
@@ -233,10 +170,10 @@ internal sealed class Node : IActionRenderer, INode, IApplicationService
             = await CreateTransport(privateKey, blocksyncEndPoint);
         var swarmOptions = new SwarmOptions
         {
-            StaticPeers = [(BoundPeer)blocksyncSeedPeer],
+            StaticPeers = [ToBoundPeer(blocksyncSeedPeer)],
             BootstrapOptions = new()
             {
-                SeedPeers = [(BoundPeer)blocksyncSeedPeer],
+                SeedPeers = [ToBoundPeer(blocksyncSeedPeer)],
             },
         };
         var consensusTransport = await CreateTransport(
@@ -244,7 +181,7 @@ internal sealed class Node : IActionRenderer, INode, IApplicationService
             endPoint: consensusEndPoint);
         var consensusReactorOption = new ConsensusReactorOption
         {
-            SeedPeers = [(BoundPeer)consensusSeedPeer],
+            SeedPeers = [ToBoundPeer(consensusSeedPeer)],
             ConsensusPort = consensusEndPoint.Port,
             ConsensusPrivateKey = privateKey,
             TargetBlockInterval = TimeSpan.FromSeconds(2),
@@ -263,7 +200,6 @@ internal sealed class Node : IActionRenderer, INode, IApplicationService
             {
                 PrivateKey = _seedNodePrivateKey,
                 EndPoint = blocksyncSeedPeer.EndPoint,
-                AppProtocolVersion = BlockChainUtility.AppProtocolVersion,
             });
             await _blocksyncSeedNode.StartAsync(cancellationToken);
             _logger.Debug("Node.BlocksyncSeed is started: {Address}", Address);
@@ -275,7 +211,6 @@ internal sealed class Node : IActionRenderer, INode, IApplicationService
             {
                 PrivateKey = _seedNodePrivateKey,
                 EndPoint = consensusSeedPeer.EndPoint,
-                AppProtocolVersion = BlockChainUtility.AppProtocolVersion,
             });
             await _consensusSeedNode.StartAsync(cancellationToken);
             _logger.Debug("Node.ConsensusSeed is started: {Address}", Address);
@@ -338,18 +273,6 @@ internal sealed class Node : IActionRenderer, INode, IApplicationService
         UpdateNodeInfo();
         _logger.Debug("Node is stopped: {Address}", Address);
         Stopped?.Invoke(this, EventArgs.Empty);
-    }
-
-    public long GetNextNonce(AppAddress address)
-    {
-        ObjectDisposedExceptionUtility.ThrowIf(_isDisposed, this);
-        InvalidOperationExceptionUtility.ThrowIf(
-            condition: IsRunning != true,
-            message: "Node is not running.");
-
-        var blockChain = BlockChain;
-        var nonce = blockChain.GetNextTxNonce((Address)address);
-        return nonce;
     }
 
     public async ValueTask DisposeAsync()
@@ -423,7 +346,7 @@ internal sealed class Node : IActionRenderer, INode, IApplicationService
             }
 
             var blockChain = _swarm!.BlockChain;
-            var blockInfo = new BlockInfo(blockChain.Tip);
+            var blockInfo = new BlockInfo(blockChain, blockChain.Tip);
             UpdateNodeInfo();
             BlockAppended?.Invoke(this, new(blockInfo));
         }

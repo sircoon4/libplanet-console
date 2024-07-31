@@ -1,7 +1,6 @@
 using System.Collections;
 using System.ComponentModel.Composition;
 using System.Diagnostics;
-using LibplanetConsole.Clients.Serializations;
 using LibplanetConsole.Clients.Services;
 using LibplanetConsole.Common;
 using LibplanetConsole.Frameworks;
@@ -37,6 +36,7 @@ public abstract class ApplicationBase : Frameworks.ApplicationBase, IApplication
         _container.ComposeExportedValue<IServiceProvider>(this);
         _container.ComposeExportedValue(_client);
         _container.ComposeExportedValue<IClient>(_client);
+        _container.ComposeExportedValue<IBlockChain>(_client);
         _clientServiceContext = _container.GetValue<ClientServiceContext>();
         _clientServiceContext.EndPoint = options.EndPoint;
         _container.GetValue<IApplicationConfigurations>();

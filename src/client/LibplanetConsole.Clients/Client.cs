@@ -1,19 +1,14 @@
 using System.Security;
-using Libplanet.Action;
-using Libplanet.Crypto;
-using Libplanet.Types.Blocks;
-using Libplanet.Types.Tx;
-using LibplanetConsole.Clients.Serializations;
 using LibplanetConsole.Clients.Services;
 using LibplanetConsole.Common;
 using LibplanetConsole.Common.Extensions;
-using LibplanetConsole.Nodes.Serializations;
+using LibplanetConsole.Nodes;
 using LibplanetConsole.Nodes.Services;
 using Serilog;
 
 namespace LibplanetConsole.Clients;
 
-internal sealed class Client : IClient, INodeCallback
+internal sealed partial class Client : IClient, INodeCallback, IBlockChainCallback
 {
     private readonly ApplicationBase _application;
     private readonly SecureString _privateKey;
@@ -70,6 +65,9 @@ internal sealed class Client : IClient, INodeCallback
 
     private INodeService RemoteNodeService => _application.GetService<RemoteNodeService>().Service;
 
+    private IBlockChainService RemoteBlockChainService
+        => _application.GetService<RemoteBlockChainService>().Service;
+
     public override string ToString() => $"[{Address}]";
 
     public bool Verify(object obj, byte[] signature) => PublicKey.Verify(obj, signature);
@@ -109,22 +107,6 @@ internal sealed class Client : IClient, INodeCallback
         Stopped?.Invoke(this, new(StopReason.None));
     }
 
-    public async Task<AppId> SendTransactionAsync(
-        IAction[] actions, CancellationToken cancellationToken)
-    {
-        var privateKey = AppPrivateKey.FromSecureString(_privateKey);
-        var address = privateKey.Address;
-        var nonce = await RemoteNodeService.GetNextNonceAsync(address, cancellationToken);
-        var genesisHash = NodeInfo.GenesisHash;
-        var tx = Transaction.Create(
-            nonce: nonce,
-            privateKey: (PrivateKey)privateKey,
-            genesisHash: (BlockHash)genesisHash,
-            actions: [.. actions.Select(item => item.PlainValue)]);
-        _logger.Debug("Client sends a transaction: {AppId}", tx.Id);
-        return await RemoteNodeService.SendTransactionAsync(tx.Serialize(), cancellationToken);
-    }
-
     public void InvokeNodeStartedEvent(NodeInfo nodeInfo)
     {
         NodeInfo = nodeInfo;
@@ -138,9 +120,7 @@ internal sealed class Client : IClient, INodeCallback
     }
 
     public void InvokeBlockAppendedEvent(BlockInfo blockInfo)
-    {
-        BlockAppended?.Invoke(this, new BlockEventArgs(blockInfo));
-    }
+        => BlockAppended?.Invoke(this, new BlockEventArgs(blockInfo));
 
     public async ValueTask DisposeAsync()
     {
@@ -152,17 +132,11 @@ internal sealed class Client : IClient, INodeCallback
         }
     }
 
-    void INodeCallback.OnStarted(NodeInfo nodeInfo)
-    {
-        NodeInfo = nodeInfo;
-    }
+    void INodeCallback.OnStarted(NodeInfo nodeInfo) => NodeInfo = nodeInfo;
 
-    void INodeCallback.OnStopped()
-    {
-        NodeInfo = NodeInfo.Empty;
-    }
+    void INodeCallback.OnStopped() => NodeInfo = NodeInfo.Empty;
 
-    void INodeCallback.OnBlockAppended(BlockInfo blockInfo)
+    void IBlockChainCallback.OnBlockAppended(BlockInfo blockInfo)
     {
         BlockAppended?.Invoke(this, new BlockEventArgs(blockInfo));
     }

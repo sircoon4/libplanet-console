@@ -2,10 +2,7 @@ using System.Collections;
 using System.ComponentModel.Composition;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using Libplanet.Types.Blocks;
 using LibplanetConsole.Common;
-using LibplanetConsole.Common.Serializations;
-using LibplanetConsole.Consoles.Serializations;
 using LibplanetConsole.Frameworks;
 using LibplanetConsole.Frameworks.Extensions;
 using Serilog;
@@ -56,7 +53,7 @@ public abstract class ApplicationBase : Frameworks.ApplicationBase, IApplication
         };
         GenesisOptions = new()
         {
-            GenesisKey = (AppPrivateKey)BlockChainUtility.AppProtocolKey,
+            GenesisKey = GenesisOptions.AppProtocolKey,
             GenesisValidators = [.. options.Nodes.Select(item => item.PublicKey)],
             Timestamp = DateTimeOffset.UtcNow,
         };
