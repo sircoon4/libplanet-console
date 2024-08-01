@@ -1,8 +1,11 @@
+using System.Numerics;
 using GraphQL;
 using GraphQL.Types;
 using Libplanet.Blockchain;
 using Libplanet.Common;
+using Libplanet.Crypto;
 using Libplanet.Types.Tx;
+using LibplanetConsole.Common;
 using LibplanetConsole.Common.Actions;
 using LibplanetConsole.Explorer.GraphTypes;
 using LibplanetConsole.Explorer.Interfaces;
@@ -68,6 +71,45 @@ namespace LibplanetConsole.Explorer.Mutations
                         node.AddTransactionAsync([action], cts.Token).Wait();
 
                         return simple;
+                    }
+                });
+
+            Field<StringGraphType>(
+                "mintWETH",
+                description: "mint weth",
+                arguments: new QueryArguments(
+                    new QueryArgument<NonNullGraphType<StringGraphType>>
+                    {
+                        Description = "minter private key",
+                        Name = "privateKey",
+                    },
+                    new QueryArgument<NonNullGraphType<AddressType>>
+                    {
+                        Description = "A hex-encoded value for address of recipient.",
+                        Name = "recipient",
+                    },
+                    new QueryArgument<NonNullGraphType<BigIntGraphType>>
+                    {
+                        Description = "The value to be minted.",
+                        Name = "amount",
+                    }),
+                resolve: context =>
+                {
+                    using (CancellationTokenSource cts = new())
+                    {
+                        INode node = _context.Node;
+
+                        var privateKeyStr = context.GetArgument<string>("privateKey");
+                        var recipient = context.GetArgument<Address>("recipient");
+                        var amount = context.GetArgument<BigInteger>("amount");
+
+                        var privateKey = new PrivateKey(privateKeyStr);
+                        var action = new MintAction(recipient, AssetUtility.GetWETH(amount));
+
+                        node.AddTransactionWithPrivateKeyAsync([action], privateKey, cts.Token)
+                            .Wait();
+
+                        return "success";
                     }
                 });
         }

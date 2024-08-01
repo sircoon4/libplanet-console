@@ -1,4 +1,5 @@
 using Libplanet.Action;
+using Libplanet.Crypto;
 using LibplanetConsole.Common;
 
 namespace LibplanetConsole.Nodes;
@@ -22,4 +23,7 @@ public interface INode : IVerifier, ISigner, IServiceProvider
     Task StopAsync(CancellationToken cancellationToken);
 
     Task<AppId> AddTransactionAsync(IAction[] actions, CancellationToken cancellationToken);
+
+    Task<AppId> AddTransactionWithPrivateKeyAsync(
+        IAction[] actions, PrivateKey privateKey, CancellationToken cancellationToken);
 }

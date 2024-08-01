@@ -1,5 +1,6 @@
 using Bencodex.Types;
 using Libplanet.Action;
+using Libplanet.Crypto;
 using LibplanetConsole.Common;
 
 namespace LibplanetConsole.Nodes;
@@ -9,6 +10,9 @@ public interface IBlockChain
     event EventHandler<BlockEventArgs>? BlockAppended;
 
     Task<AppId> AddTransactionAsync(IAction[] actions, CancellationToken cancellationToken);
+
+    Task<AppId> AddTransactionWithPrivateKeyAsync(
+        IAction[] actions, PrivateKey privateKey, CancellationToken cancellationToken);
 
     Task<long> GetNextNonceAsync(AppAddress address, CancellationToken cancellationToken);
 

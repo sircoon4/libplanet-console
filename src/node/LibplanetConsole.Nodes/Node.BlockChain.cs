@@ -38,6 +38,27 @@ internal sealed partial class Node : IBlockChain
         return (AppId)transaction.Id;
     }
 
+    public async Task<AppId> AddTransactionWithPrivateKeyAsync(
+        IAction[] actions, PrivateKey privateKey, CancellationToken cancellationToken)
+    {
+        ObjectDisposedExceptionUtility.ThrowIf(_isDisposed, this);
+        InvalidOperationExceptionUtility.ThrowIf(
+            condition: IsRunning != true,
+            message: "Node is not running.");
+
+        var blockChain = BlockChain;
+        var genesisBlock = blockChain.Genesis;
+        var nonce = blockChain.GetNextTxNonce(privateKey.Address);
+        var values = actions.Select(item => item.PlainValue).ToArray();
+        var transaction = Transaction.Create(
+            nonce: nonce,
+            privateKey: privateKey,
+            genesisHash: genesisBlock.Hash,
+            actions: new TxActionList(values));
+        await AddTransactionAsync(transaction, cancellationToken);
+        return (AppId)transaction.Id;
+    }
+
     public async Task AddTransactionAsync(
         Transaction transaction, CancellationToken cancellationToken)
     {
