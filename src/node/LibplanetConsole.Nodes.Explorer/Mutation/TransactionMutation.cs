@@ -76,7 +76,7 @@ namespace LibplanetConsole.Explorer.Mutations
 
             Field<StringGraphType>(
                 "mintWETH",
-                description: "mint weth",
+                description: "mint WETH",
                 arguments: new QueryArguments(
                     new QueryArgument<NonNullGraphType<StringGraphType>>
                     {
@@ -105,6 +105,45 @@ namespace LibplanetConsole.Explorer.Mutations
 
                         var privateKey = new PrivateKey(privateKeyStr);
                         var action = new MintAction(recipient, AssetUtility.GetWETH(amount));
+
+                        node.AddTransactionWithPrivateKeyAsync([action], privateKey, cts.Token)
+                            .Wait();
+
+                        return "success";
+                    }
+                });
+
+            Field<StringGraphType>(
+                "mintNCG",
+                description: "mint NCG",
+                arguments: new QueryArguments(
+                    new QueryArgument<NonNullGraphType<StringGraphType>>
+                    {
+                        Description = "minter private key",
+                        Name = "privateKey",
+                    },
+                    new QueryArgument<NonNullGraphType<AddressType>>
+                    {
+                        Description = "A hex-encoded value for address of recipient.",
+                        Name = "recipient",
+                    },
+                    new QueryArgument<NonNullGraphType<BigIntGraphType>>
+                    {
+                        Description = "The value to be minted.",
+                        Name = "amount",
+                    }),
+                resolve: context =>
+                {
+                    using (CancellationTokenSource cts = new())
+                    {
+                        INode node = _context.Node;
+
+                        var privateKeyStr = context.GetArgument<string>("privateKey");
+                        var recipient = context.GetArgument<Address>("recipient");
+                        var amount = context.GetArgument<BigInteger>("amount");
+
+                        var privateKey = new PrivateKey(privateKeyStr);
+                        var action = new MintAction(recipient, AssetUtility.GetNCG(amount));
 
                         node.AddTransactionWithPrivateKeyAsync([action], privateKey, cts.Token)
                             .Wait();
