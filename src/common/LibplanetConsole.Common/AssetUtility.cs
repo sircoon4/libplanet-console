@@ -1,5 +1,8 @@
 using System.Collections.Immutable;
 using System.Numerics;
+using System.Security.Cryptography;
+using System.Text;
+using Libplanet.Common;
 using Libplanet.Crypto;
 using Libplanet.Types.Assets;
 
@@ -7,6 +10,14 @@ namespace LibplanetConsole.Common;
 
 public static class AssetUtility
 {
+    public static Address GetWithdrawAccountAddress()
+    {
+        HashDigest<SHA256> withdrawAddress = HashDigest<SHA256>.DeriveFrom(
+            Encoding.ASCII.GetBytes("withdraw"));
+        Address address = new Address(withdrawAddress.ToByteArray());
+        return address;
+    }
+
     public static FungibleAssetValue GetWETH(BigInteger amount)
     {
         var minters = ImmutableHashSet<Address>.Empty;

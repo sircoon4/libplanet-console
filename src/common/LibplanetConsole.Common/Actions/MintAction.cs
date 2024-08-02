@@ -28,14 +28,14 @@ public sealed class MintAction : ActionBase
     protected override Dictionary OnInitialize(Dictionary values)
     {
         return base.OnInitialize(values)
-            .Add("recipient", Recipient.ToByteArray())
+            .Add("recipient", Recipient.Bencoded)
             .Add("amount", Amount.Serialize());
     }
 
     protected override void OnLoadPlainValue(Dictionary values)
     {
         base.OnLoadPlainValue(values);
-        Recipient = new Address((Binary)values["recipient"]);
+        Recipient = new Address(values["recipient"]);
         Amount = new FungibleAssetValue(values["amount"]);
     }
 
