@@ -48,6 +48,7 @@ public sealed class WithdrawETHAction : ActionBase
     {
         Address withdrawAddress = GetWithdrawAddress();
         Address nonceAddress = GetNonceAddress();
+        Address dataAddress = GetDataAddress();
 
         Codec codec = new Codec();
 
@@ -64,11 +65,12 @@ public sealed class WithdrawETHAction : ActionBase
             .Add("amount", new Integer(Amount));
 
         var hash = HashDigest<SHA1>.DeriveFrom(codec.Encode(data));
-        data = data.Add("hash", hash.Bencoded);
         var hashAddress = new Address(hash.ToByteArray());
 
-        account = account.SetState(nonceAddress, nonce);
-        account = account.SetState(hashAddress, data);
+        account = account
+            .SetState(nonceAddress, nonce)
+            .SetState(dataAddress, data)
+            .SetState(hashAddress, new Bencodex.Types.Boolean(true));
         world = world.SetAccount(withdrawAddress, account);
 
         // To do: Transfer the WETH to the withdraw address.
@@ -88,6 +90,14 @@ public sealed class WithdrawETHAction : ActionBase
     {
         HashDigest<SHA1> hash = HashDigest<SHA1>.DeriveFrom(
             Encoding.ASCII.GetBytes("libplanet_withdraw_nonce"));
+        Address address = new Address(hash.ToByteArray());
+        return address;
+    }
+
+    private Address GetDataAddress()
+    {
+        HashDigest<SHA1> hash = HashDigest<SHA1>.DeriveFrom(
+            Encoding.ASCII.GetBytes("libplanet_withdraw_data"));
         Address address = new Address(hash.ToByteArray());
         return address;
     }
