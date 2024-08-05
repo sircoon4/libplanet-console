@@ -8,21 +8,22 @@ using Libplanet.Action.State;
 using Libplanet.Common;
 using Libplanet.Crypto;
 using Libplanet.Types.Assets;
+using Libplanet.Types.Tx;
 
 namespace LibplanetConsole.Common.Actions;
 
 [ActionType(ActionTypeValue)]
-public sealed class WithdrawETHAction : ActionBase
+public sealed class WithdrawEthAction : ActionBase
 {
     private const string ActionTypeValue = "withdraw_action";
 
-    public WithdrawETHAction(Address recipient, BigInteger amount)
+    public WithdrawEthAction(Address recipient, BigInteger amount)
     {
         Recipient = recipient;
         Amount = amount;
     }
 
-    public WithdrawETHAction()
+    public WithdrawEthAction()
     {
     }
 
@@ -48,7 +49,7 @@ public sealed class WithdrawETHAction : ActionBase
     {
         Address withdrawAddress = GetWithdrawAddress();
         Address nonceAddress = GetNonceAddress();
-        Address dataAddress = GetDataAddress();
+        Address dataAddress = GetDataAddress(context.TxId);
 
         Codec codec = new Codec();
 
@@ -66,6 +67,8 @@ public sealed class WithdrawETHAction : ActionBase
 
         var hash = HashDigest<SHA1>.DeriveFrom(codec.Encode(data));
         var hashAddress = new Address(hash.ToByteArray());
+
+        data = data.Add("hash", hashAddress.Bencoded);
 
         account = account
             .SetState(nonceAddress, nonce)
@@ -94,9 +97,10 @@ public sealed class WithdrawETHAction : ActionBase
         return address;
     }
 
-    private Address GetDataAddress()
+    private Address GetDataAddress(TxId? txId)
     {
         HashDigest<SHA1> hash = HashDigest<SHA1>.DeriveFrom(
+            txId?.ToByteArray() ??
             Encoding.ASCII.GetBytes("libplanet_withdraw_data"));
         Address address = new Address(hash.ToByteArray());
         return address;
