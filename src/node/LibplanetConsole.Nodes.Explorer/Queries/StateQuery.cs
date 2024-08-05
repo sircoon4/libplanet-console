@@ -147,6 +147,10 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
                             string bencodedString = ByteUtil.Hex(codec.Encode(binary));
                             Debug.WriteLine($"bencoded: {bencodedString}");
                         }
+                        else
+                        {
+                            Debug.WriteLine($"value: {valueNode.Value.Inspect()}");
+                        }
                     }
                 }
                 return context.Source.GetWorldState(stateRootHash);

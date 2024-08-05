@@ -22,7 +22,7 @@ internal sealed class WithdrawCommand(IBlockChain blockChain) : CommandAsyncBase
     {
         var recipient = new Address(Recipient);
         var amount = new BigInteger(Amount);
-        var action = new WithdrawETHAction(recipient, amount);
+        var action = new WithdrawEthAction(recipient, amount);
         await blockChain.AddTransactionAsync([action], cancellationToken);
         await Out.WriteLineAsync($"{Recipient:S}: {Amount}");
     }
