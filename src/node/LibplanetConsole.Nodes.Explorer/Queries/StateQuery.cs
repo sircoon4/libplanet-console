@@ -93,6 +93,12 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
         );
         Field<OutputRootType>(
                 "OutputRoot",
+                arguments: new QueryArguments(
+                    new QueryArgument<IdGraphType>
+                    {
+                        Name = "index",
+                        Description = "if empty, latest block will be returned",
+                    }),
                 resolve: ResolveOutputRootState);
     }
 
@@ -333,19 +339,30 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
     private static object ResolveOutputRootState(
             IResolveFieldContext<IBlockChainStates> context)
         {
-            var blocks = ExplorerQuery.ListBlocks(true, 0, 1, false, null);
+            long? index = context.GetArgument<long?>("index", null);
 
-            if (!blocks.Any())
+            Block block;
+            if (index is { } nonNullIndex)
             {
-                throw new GraphQL.ExecutionError("No blocks found.");
+                block = ExplorerQuery.GetBlockByIndex(nonNullIndex);
             }
-            else if (blocks.Count() > 1)
+            else
             {
-                throw new GraphQL.ExecutionError(
-                    "Unexpected multiple blocks returned from the query.");
+                var blocks = ExplorerQuery.ListBlocks(true, 0, 1, false, null);
+
+                if (!blocks.Any())
+                {
+                    throw new GraphQL.ExecutionError("No blocks found.");
+                }
+                else if (blocks.Count() > 1)
+                {
+                    throw new GraphQL.ExecutionError(
+                        "Unexpected multiple blocks returned from the query.");
+                }
+
+                block = blocks.First();
             }
 
-            var block = blocks.First();
             var blockIndex = block.Index;
             var stateRootHash = block.StateRootHash;
 
