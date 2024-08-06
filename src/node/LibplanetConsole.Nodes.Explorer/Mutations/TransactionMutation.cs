@@ -151,6 +151,45 @@ namespace LibplanetConsole.Explorer.Mutations
                         return "success";
                     }
                 });
+
+            Field<StringGraphType>(
+                "withdrawWETH",
+                description: "withdraw WETH",
+                arguments: new QueryArguments(
+                    new QueryArgument<NonNullGraphType<StringGraphType>>
+                    {
+                        Description = "withdrawer private key",
+                        Name = "privateKey",
+                    },
+                    new QueryArgument<NonNullGraphType<AddressType>>
+                    {
+                        Description = "A hex-encoded value for address of recipient on L1.",
+                        Name = "recipient",
+                    },
+                    new QueryArgument<NonNullGraphType<BigIntGraphType>>
+                    {
+                        Description = "The value to be withdrawed.",
+                        Name = "amount",
+                    }),
+                resolve: context =>
+                {
+                    using (CancellationTokenSource cts = new())
+                    {
+                        INode node = _context.Node;
+
+                        var privateKeyStr = context.GetArgument<string>("privateKey");
+                        var recipient = context.GetArgument<Address>("recipient");
+                        var amount = context.GetArgument<BigInteger>("amount");
+
+                        var privateKey = new PrivateKey(privateKeyStr);
+                        var action = new WithdrawEthAction(recipient, amount);
+
+                        node.AddTransactionWithPrivateKeyAsync([action], privateKey, cts.Token)
+                            .Wait();
+
+                        return "success";
+                    }
+                });
         }
     }
 }
