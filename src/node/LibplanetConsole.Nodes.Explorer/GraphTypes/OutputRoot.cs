@@ -7,31 +7,19 @@ namespace LibplanetConsole.Explorer.GraphTypes
     public class OutputRoot
     {
         public OutputRoot(
-            TxStatus status,
-            long? blockIndex,
-            string? blockHash,
-            HashDigest<SHA256>? inputState,
-            HashDigest<SHA256>? outputState,
-            List<string?>? exceptionNames)
+            long blockIndex,
+            HashDigest<SHA256> stateRootHash,
+            HashDigest<SHA256> storageRootHash)
         {
-            TxStatus = status;
             BlockIndex = blockIndex;
-            BlockHash = blockHash;
-            InputState = inputState;
-            OutputState = outputState;
-            ExceptionNames = exceptionNames;
+            StateRootHash = stateRootHash;
+            StorageRootHash = storageRootHash;
         }
 
-        public TxStatus TxStatus { get; private set; }
+        public long BlockIndex { get; private set; }
 
-        public long? BlockIndex { get; private set; }
+        public HashDigest<SHA256> StateRootHash { get; private set; }
 
-        public string? BlockHash { get; private set; }
-
-        public HashDigest<SHA256>? InputState { get; private set; }
-
-        public HashDigest<SHA256>? OutputState { get; private set; }
-
-        public List<string?>? ExceptionNames { get; private set; }
+        public HashDigest<SHA256> StorageRootHash { get; private set; }
     }
 }
