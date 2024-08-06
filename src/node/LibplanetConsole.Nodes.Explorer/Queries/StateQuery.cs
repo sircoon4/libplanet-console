@@ -11,6 +11,7 @@ using Libplanet.Store.Trie;
 using Libplanet.Store.Trie.Nodes;
 using Libplanet.Types.Assets;
 using Libplanet.Types.Blocks;
+using LibplanetConsole.Common;
 using LibplanetConsole.Explorer.GraphTypes;
 
 namespace LibplanetConsole.Explorer.Queries;
@@ -90,6 +91,9 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
             ),
             resolve: ResolveInclusionProof
         );
+        Field<OutputRootType>(
+                "OutputRoot",
+                resolve: ResolveOutputRootState);
     }
 
     private static object ResolveWorldState(IResolveFieldContext<IBlockChainStates> context)
@@ -325,4 +329,43 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
 
         return (IValue)bencodedProof;
     }
+
+    private static object ResolveOutputRootState(
+            IResolveFieldContext<IBlockChainStates> context)
+        {
+            var blocks = ExplorerQuery.ListBlocks(true, 0, 1, false, null);
+
+            if (!blocks.Any())
+            {
+                throw new GraphQL.ExecutionError("No blocks found.");
+            }
+            else if (blocks.Count() > 1)
+            {
+                throw new GraphQL.ExecutionError(
+                    "Unexpected multiple blocks returned from the query.");
+            }
+
+            var block = blocks.First();
+            var blockIndex = block.Index;
+            var stateRootHash = block.StateRootHash;
+
+            HashDigest<SHA256>? storageRootHash = null;
+            var trie = (MerkleTrie)context.Source.GetWorldState(stateRootHash).Trie;
+            Address withdrawAccountAddress = AssetUtility.GetWithdrawAccountAddress();
+            var key = ExplorerQuery.ToStateKey(withdrawAccountAddress);
+            if (trie.Get(key) is { } storageRootHashValue)
+            {
+                storageRootHash = new HashDigest<SHA256>(
+                    ((Binary)storageRootHashValue).ToByteArray());
+            }
+
+            if (storageRootHash is { } nonNullStorageRootHash)
+            {
+                return new OutputRoot(blockIndex, stateRootHash, nonNullStorageRootHash);
+            }
+            else
+            {
+                throw new GraphQL.ExecutionError("No storage root hash found.");
+            }
+        }
 }

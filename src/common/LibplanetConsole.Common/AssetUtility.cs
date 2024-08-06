@@ -12,9 +12,9 @@ public static class AssetUtility
 {
     public static Address GetWithdrawAccountAddress()
     {
-        HashDigest<SHA256> withdrawAddress = HashDigest<SHA256>.DeriveFrom(
-            Encoding.ASCII.GetBytes("withdraw"));
-        Address address = new Address(withdrawAddress.ToByteArray());
+        HashDigest<SHA1> hash = HashDigest<SHA1>.DeriveFrom(
+            Encoding.ASCII.GetBytes("libplanet_withdraw"));
+        Address address = new Address(hash.ToByteArray());
         return address;
     }
 

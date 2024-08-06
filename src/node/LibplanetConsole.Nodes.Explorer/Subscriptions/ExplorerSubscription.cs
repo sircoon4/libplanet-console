@@ -72,7 +72,7 @@ namespace LibplanetConsole.Explorer.Subscriptions
                 });
         }
 
-        private OutputRoot? GetTxResult(Transaction transaction, IStore store, BlockChain chain)
+        private TxResult? GetTxResult(Transaction transaction, IStore store, BlockChain chain)
         {
             if (store.GetFirstTxIdBlockHashIndex(transaction.Id) is not { } blockHash)
             {
@@ -95,7 +95,7 @@ namespace LibplanetConsole.Explorer.Subscriptions
         {
             public Transaction? Transaction { get; set; }
 
-            public OutputRoot? TxResult { get; set; }
+            public TxResult? TxResult { get; set; }
         }
 
         private sealed class TxType : ObjectGraphType<Tx>
@@ -103,7 +103,7 @@ namespace LibplanetConsole.Explorer.Subscriptions
             public TxType()
             {
                 Field<NonNullGraphType<TransactionType>>(nameof(Transaction));
-                Field<TxResultType>(nameof(OutputRoot));
+                Field<TxResultType>(nameof(TxResult));
             }
         }
     }
