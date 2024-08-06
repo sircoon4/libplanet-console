@@ -8,6 +8,7 @@ using Libplanet.Action.State;
 using Libplanet.Common;
 using Libplanet.Crypto;
 using Libplanet.Types.Tx;
+using Serilog;
 
 namespace LibplanetConsole.Common.Actions;
 
@@ -50,9 +51,21 @@ public sealed class WithdrawEthAction : ActionBase
         Address nonceAddress = GetNonceAddress();
         Address dataAddress = GetDataAddress(context.TxId);
 
+        var world = context.PreviousState;
+
+        try
+        {
+            var weth = AssetUtility.GetWETH(Amount);
+            world = world.TransferAsset(context, context.Signer, withdrawAddress, weth);
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, "Failed to transfer WETH: {0}", e.Message);
+            throw new InvalidOperationException("Failed to transfer WETH.", e);
+        }
+
         Codec codec = new Codec();
 
-        var world = context.PreviousState;
         var account = world.GetAccount(withdrawAddress);
 
         var nonce = (Integer)(account.GetState(nonceAddress) ?? new Integer(0));
@@ -74,8 +87,6 @@ public sealed class WithdrawEthAction : ActionBase
             .SetState(dataAddress, data)
             .SetState(hashAddress, new Bencodex.Types.Boolean(true));
         world = world.SetAccount(withdrawAddress, account);
-
-        // To do: Transfer the WETH to the withdraw address.
 
         return world;
     }
