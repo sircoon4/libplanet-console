@@ -152,9 +152,9 @@ namespace LibplanetConsole.Explorer.Mutations
                     }
                 });
 
-            Field<StringGraphType>(
-                "withdrawWETH",
-                description: "withdraw WETH",
+            Field<TxIdType>(
+                "withdrawETH",
+                description: "withdraw ETH",
                 arguments: new QueryArguments(
                     new QueryArgument<NonNullGraphType<StringGraphType>>
                     {
@@ -173,22 +173,20 @@ namespace LibplanetConsole.Explorer.Mutations
                     }),
                 resolve: context =>
                 {
-                    using (CancellationTokenSource cts = new())
-                    {
-                        INode node = _context.Node;
+                    var blockchain = _context.BlockChain;
 
-                        var privateKeyStr = context.GetArgument<string>("privateKey");
-                        var recipient = context.GetArgument<Address>("recipient");
-                        var amount = context.GetArgument<BigInteger>("amount");
+                    var privateKeyStr = context.GetArgument<string>("privateKey");
+                    var recipient = context.GetArgument<Address>("recipient");
+                    var amount = context.GetArgument<BigInteger>("amount");
 
-                        var privateKey = new PrivateKey(privateKeyStr);
-                        var action = new WithdrawEthAction(recipient, amount);
+                    var privateKey = new PrivateKey(privateKeyStr);
+                    var action = new WithdrawEthAction(recipient, amount);
 
-                        node.AddTransactionWithPrivateKeyAsync([action], privateKey, cts.Token)
-                            .Wait();
+                    Transaction tx = blockchain.MakeTransaction(
+                        privateKey,
+                        new ActionBase[] { action });
 
-                        return "success";
-                    }
+                    return tx.Id;
                 });
         }
     }
