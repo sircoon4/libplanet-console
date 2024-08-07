@@ -47,9 +47,9 @@ public sealed class WithdrawEthAction : ActionBase
 
     protected override IWorld OnExecute(IActionContext context)
     {
-        Address withdrawAddress = AssetUtility.GetWithdrawAccountAddress();
+        Address withdrawAddress = AssetUtility.GetWithdrawalAccountAddress();
         Address nonceAddress = GetNonceAddress();
-        Address dataAddress = GetDataAddress(context.TxId);
+        Address dataAddress = AssetUtility.GetWithdrawalDataAddress(context.TxId);
 
         var world = context.PreviousState;
 
@@ -95,15 +95,6 @@ public sealed class WithdrawEthAction : ActionBase
     {
         HashDigest<SHA1> hash = HashDigest<SHA1>.DeriveFrom(
             Encoding.ASCII.GetBytes("libplanet_withdraw_nonce"));
-        Address address = new Address(hash.ToByteArray());
-        return address;
-    }
-
-    private Address GetDataAddress(TxId? txId)
-    {
-        HashDigest<SHA1> hash = HashDigest<SHA1>.DeriveFrom(
-            txId?.ToByteArray() ??
-            Encoding.ASCII.GetBytes("libplanet_withdraw_data"));
         Address address = new Address(hash.ToByteArray());
         return address;
     }

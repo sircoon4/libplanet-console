@@ -11,6 +11,7 @@ using Libplanet.Store.Trie;
 using Libplanet.Store.Trie.Nodes;
 using Libplanet.Types.Assets;
 using Libplanet.Types.Blocks;
+using Libplanet.Types.Tx;
 using LibplanetConsole.Common;
 using LibplanetConsole.Explorer.GraphTypes;
 
@@ -92,14 +93,28 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
             resolve: ResolveInclusionProof
         );
         Field<OutputRootType>(
-                "OutputRoot",
-                arguments: new QueryArguments(
-                    new QueryArgument<IdGraphType>
-                    {
-                        Name = "index",
-                        Description = "if empty, latest block will be returned",
-                    }),
-                resolve: ResolveOutputRootState);
+            "outputRoot",
+            arguments: new QueryArguments(
+                new QueryArgument<IdGraphType>
+                {
+                    Name = "index",
+                    Description = "if empty, latest block will be returned",
+                }),
+            resolve: ResolveOutputRootState);
+        Field<WithdrawalProofType>(
+            "withdrawalProof",
+            arguments: new QueryArguments(
+                new QueryArgument<NonNullGraphType<HashDigestSHA256Type>>
+                {
+                    Name = "storageRootHash",
+                },
+                new QueryArgument<NonNullGraphType<IdGraphType>>
+                {
+                    Name = "txId",
+                    Description = "transaction id.",
+                }
+            ),
+            resolve: ResolveWithdrawalProof);
     }
 
     private static object ResolveWorldState(IResolveFieldContext<IBlockChainStates> context)
@@ -336,53 +351,80 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
         return (IValue)bencodedProof;
     }
 
-    private static object ResolveOutputRootState(
-            IResolveFieldContext<IBlockChainStates> context)
+    private static object ResolveOutputRootState(IResolveFieldContext<IBlockChainStates> context)
+    {
+        long? index = context.GetArgument<long?>("index", null);
+
+        Block block;
+        if (index is { } nonNullIndex)
         {
-            long? index = context.GetArgument<long?>("index", null);
-
-            Block block;
-            if (index is { } nonNullIndex)
-            {
-                block = ExplorerQuery.GetBlockByIndex(nonNullIndex);
-            }
-            else
-            {
-                var blocks = ExplorerQuery.ListBlocks(true, 0, 1, false, null);
-
-                if (!blocks.Any())
-                {
-                    throw new GraphQL.ExecutionError("No blocks found.");
-                }
-                else if (blocks.Count() > 1)
-                {
-                    throw new GraphQL.ExecutionError(
-                        "Unexpected multiple blocks returned from the query.");
-                }
-
-                block = blocks.First();
-            }
-
-            var blockIndex = block.Index;
-            var stateRootHash = block.StateRootHash;
-
-            HashDigest<SHA256>? storageRootHash = null;
-            var trie = (MerkleTrie)context.Source.GetWorldState(stateRootHash).Trie;
-            Address withdrawAccountAddress = AssetUtility.GetWithdrawAccountAddress();
-            var key = ExplorerQuery.ToStateKey(withdrawAccountAddress);
-            if (trie.Get(key) is { } storageRootHashValue)
-            {
-                storageRootHash = new HashDigest<SHA256>(
-                    ((Binary)storageRootHashValue).ToByteArray());
-            }
-
-            if (storageRootHash is { } nonNullStorageRootHash)
-            {
-                return new OutputRoot(blockIndex, stateRootHash, nonNullStorageRootHash);
-            }
-            else
-            {
-                throw new GraphQL.ExecutionError("No storage root hash found.");
-            }
+            block = ExplorerQuery.GetBlockByIndex(nonNullIndex);
         }
+        else
+        {
+            var blocks = ExplorerQuery.ListBlocks(true, 0, 1, false, null);
+
+            if (!blocks.Any())
+            {
+                throw new GraphQL.ExecutionError("No blocks found.");
+            }
+            else if (blocks.Count() > 1)
+            {
+                throw new GraphQL.ExecutionError(
+                    "Unexpected multiple blocks returned from the query.");
+            }
+
+            block = blocks.First();
+        }
+
+        var blockIndex = block.Index;
+        var stateRootHash = block.StateRootHash;
+
+        HashDigest<SHA256>? storageRootHash = null;
+        var trie = (MerkleTrie)context.Source.GetWorldState(stateRootHash).Trie;
+        Address withdrawAccountAddress = AssetUtility.GetWithdrawalAccountAddress();
+        var key = ExplorerQuery.ToStateKey(withdrawAccountAddress);
+        if (trie.Get(key) is { } storageRootHashValue)
+        {
+            storageRootHash = new HashDigest<SHA256>(
+                ((Binary)storageRootHashValue).ToByteArray());
+        }
+
+        if (storageRootHash is { } nonNullStorageRootHash)
+        {
+            return new OutputRoot(blockIndex, stateRootHash, nonNullStorageRootHash);
+        }
+        else
+        {
+            throw new GraphQL.ExecutionError("No storage root hash found.");
+        }
+    }
+
+    private static object ResolveWithdrawalProof(IResolveFieldContext<IBlockChainStates> context)
+    {
+        HashDigest<SHA256> storageRootHash =
+            context.GetArgument<HashDigest<SHA256>>("storageRootHash");
+        var txId = new TxId(ByteUtil.ParseHex(context.GetArgument<string>("txId")));
+
+        var trie = (MerkleTrie)context.Source.GetWorldState(storageRootHash).Trie;
+        var key = ExplorerQuery.ToStateKey(AssetUtility.GetWithdrawalDataAddress(txId));
+        var value = trie.Get(key);
+
+        if (value is null)
+        {
+            throw new GraphQL.ExecutionError("No withdrawal data found.");
+        }
+
+        var proofKey = ExplorerQuery.ToStateKey(
+            new Address(((Dictionary)value).GetValue<Binary>("hash")));
+        var proofs = trie.GenerateProof(proofKey, new Bencodex.Types.Boolean(true));
+        var proof = new List();
+
+        foreach (var item in proofs)
+        {
+            proof = proof.Add(item.ToBencodex());
+        }
+
+        return new WithdrawalProof(value, proof);
+    }
 }
