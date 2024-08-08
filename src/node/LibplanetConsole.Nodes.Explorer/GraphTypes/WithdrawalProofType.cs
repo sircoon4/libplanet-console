@@ -7,7 +7,7 @@ namespace LibplanetConsole.Explorer.GraphTypes
     {
         public WithdrawalProofType()
         {
-            Field<IValueType>(
+            Field<WithdrawalInfoType>(
                 nameof(WithdrawalProof.WithdrawalInfo),
                 description: "Withdrawal information.",
                 resolve: context => context.Source.WithdrawalInfo);
