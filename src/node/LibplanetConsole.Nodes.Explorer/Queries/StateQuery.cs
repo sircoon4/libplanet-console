@@ -425,6 +425,12 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
             proof = proof.Add(item.ToBencodex());
         }
 
-        return new WithdrawalProof(value, proof);
+        var withdrawalInfo = new WithdrawalInfo(
+            ((Dictionary)value).GetValue<Integer>("nonce"),
+            new Address(((Dictionary)value).GetValue<Binary>("from")),
+            new Address(((Dictionary)value).GetValue<Binary>("to")),
+            ((Dictionary)value).GetValue<Integer>("amount"));
+
+        return new WithdrawalProof(withdrawalInfo, proof);
     }
 }

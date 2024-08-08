@@ -7,15 +7,13 @@ namespace LibplanetConsole.Explorer.GraphTypes
 {
     public class WithdrawalProof
     {
-        public WithdrawalProof(
-            IValue withdrawalInfo,
-            IValue proof)
+        public WithdrawalProof(WithdrawalInfo withdrawalInfo, IValue proof)
         {
             WithdrawalInfo = withdrawalInfo;
             Proof = proof;
         }
 
-        public IValue WithdrawalInfo { get; private set; }
+        public WithdrawalInfo WithdrawalInfo { get; private set; }
 
         public IValue Proof { get; private set; }
     }
