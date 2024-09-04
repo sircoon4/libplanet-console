@@ -51,6 +51,7 @@ public static class BlockChainUtility
             new Initialize(
                 validatorSet: validatorSet,
                 states: ImmutableDictionary.Create<Address, IValue>()),
+            new WithdrawAccountInitialize(),
         ];
 
         var transaction = Transaction.Create(
