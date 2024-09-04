@@ -10,6 +10,7 @@ using Libplanet.Crypto;
 using Libplanet.Types.Blocks;
 using Libplanet.Types.Consensus;
 using Libplanet.Types.Tx;
+using LibplanetConsole.Common.Actions;
 
 namespace LibplanetConsole.Common;
 
@@ -47,6 +48,7 @@ public static class BlockUtility
             new Initialize(
                 validatorSet: validatorSet,
                 states: ImmutableDictionary.Create<Address, IValue>()),
+            new WithdrawAccountInitialize(),
         };
 
         var transaction = Transaction.Create(
