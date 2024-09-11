@@ -72,6 +72,10 @@ internal sealed record class ApplicationSettings
     [CommandPropertyCondition(nameof(Detach), false)]
     public bool ManualStart { get; set; }
 
+    [CommandPropertySwitch("no-repl")]
+    [CommandSummary("If set, the REPL is not started.")]
+    public bool NoREPL { get; init; }
+
     public static implicit operator ApplicationOptions(ApplicationSettings settings)
     {
         var endPoint = AppEndPoint.ParseOrNext(settings.EndPoint);
@@ -85,6 +89,7 @@ internal sealed record class ApplicationSettings
             NewWindow = settings.NewWindow,
             Detach = settings.Detach,
             ManualStart = settings.ManualStart,
+            NoREPL = settings.NoREPL,
         };
 
         static string GetFullPath(string path)
