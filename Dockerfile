@@ -10,6 +10,10 @@ WORKDIR /app
 
 COPY --from=build /app/.bin/libplanet-node ./
 
+EXPOSE 5001
+
+RUN apt-get update && apt-get install -y curl jq
+
 RUN mkdir /data
 
-ENTRYPOINT ["./libplanet-node", "--private-key", "b05c8b2bc981219c2afc32725f1dd7bdfce356ac7382699cb74647ab20895e32", "--end-point", "127.0.0.1:5353", "--explorer-end-point", "127.0.0.1:5001", "--store-path", "/data/.store", "--log-path", "/data/.log/node.log", "--no-repl"]
+ENTRYPOINT ["./libplanet-node", "--private-key", "b05c8b2bc981219c2afc32725f1dd7bdfce356ac7382699cb74647ab20895e32", "--end-point", "0.0.0.0:5353", "--explorer-end-point", "0.0.0.0:5001", "--store-path", "/data/.store", "--log-path", "/data/.log/node.log", "--no-repl"]
