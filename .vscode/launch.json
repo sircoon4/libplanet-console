@@ -19,7 +19,7 @@
                 "127.0.0.1:4343",
                 "--log-path",
                 ".log",
-                "--explorer"
+                "--explorer",
             ]
         },
         {
@@ -38,7 +38,8 @@
                 "--store-path",
                 ".store",
                 "--log-path",
-                ".log/node.log"
+                ".log/node.log",
+                "--no-repl"
             ]
         },
         {
