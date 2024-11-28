@@ -3,6 +3,7 @@ using Libplanet.Blockchain;
 using Libplanet.Explorer.Indexing;
 using Libplanet.Net;
 using Libplanet.Store;
+using LibplanetConsole.Explorer.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LibplanetConsole.Nodes.Explorer;

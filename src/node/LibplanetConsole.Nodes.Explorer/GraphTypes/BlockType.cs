@@ -56,6 +56,11 @@ public class BlockType : ObjectGraphType<Block>
             description: "The digital signature of the whole block content (except for hash, " +
                          "which is derived from the signature and other contents)",
             resolve: ctx => ctx.Source.Signature?.ToBuilder().ToArray());
+        Field<ByteStringType>(
+            name: "transactionHash",
+            description: "The hash of the transactions.",
+            resolve: ctx => ctx.Source.TxHash?.ToByteArray()
+        );
         Field<NonNullGraphType<ListGraphType<NonNullGraphType<TransactionType>>>>(
             name: "transactions",
             description: "Transactions belonging to the block."

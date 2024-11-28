@@ -18,7 +18,7 @@ internal sealed class WithdrawCommand(IBlockChain blockChain) : CommandAsyncBase
     public required int Amount { get; set; }
 
     protected override async Task OnExecuteAsync(
-        CancellationToken cancellationToken, IProgress<ProgressInfo> progress)
+        CancellationToken cancellationToken)
     {
         var recipient = new Address(Recipient);
         var amount = new BigInteger(Amount);

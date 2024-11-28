@@ -31,7 +31,6 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
             ),
             resolve: ResolveWorldState
         );
-
         Field<NonNullGraphType<ListGraphType<BencodexValueType>>>(
             "states",
             description: "Retrieves states from the legacy account.",
@@ -42,6 +41,14 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
                 new QueryArgument<HashDigestSHA256Type> { Name = "offsetStateRootHash" }
             ),
             resolve: ResolveStates
+        );
+        Field<NonNullGraphType<HashDigestSHA256Type>>(
+            "withdrawalState",
+            description: "Retrieves states from withdrawal account.",
+            arguments: new QueryArguments(
+                new QueryArgument<NonNullGraphType<HashDigestSHA256Type>> { Name = "offsetStateRootHash" }
+            ),
+            resolve: ResolveWithdrawalState
         );
         Field<NonNullGraphType<FungibleAssetValueType>>(
             "balance",
@@ -215,6 +222,31 @@ public class StateQuery : ObjectGraphType<IBlockChainStates>
                     .GetWorldState(offsetStateRootHash)
                     .GetAccountState(ReservedAddresses.LegacyAccount)
                     .GetStates(addresses);
+        }
+    }
+
+    private static object? ResolveWithdrawalState(IResolveFieldContext<IBlockChainStates> context)
+    {
+        HashDigest<SHA256> offsetStateRootHash = context
+            .GetArgument<HashDigest<SHA256>>("offsetStateRootHash");
+
+        HashDigest<SHA256>? storageRootHash = null;
+        var trie = (MerkleTrie)context.Source.GetWorldState(offsetStateRootHash).Trie;
+        Address withdrawAccountAddress = AssetUtility.GetWithdrawalAccountAddress();
+        var key = ExplorerQuery.ToStateKey(withdrawAccountAddress);
+        if (trie.Get(key) is { } storageRootHashValue)
+        {
+            storageRootHash = new HashDigest<SHA256>(
+                ((Binary)storageRootHashValue).ToByteArray());
+        }
+
+        if (storageRootHash is { } nonNullStorageRootHash)
+        {
+            return nonNullStorageRootHash;
+        }
+        else
+        {
+            throw new GraphQL.ExecutionError("No storage root hash found.");
         }
     }
 

@@ -1,0 +1,16 @@
+{
+  "$schema": "node-settings-schema.json",
+  "application": {
+    "endPoint": "0.0.0.0:50990",
+    "privateKey": "d4b0e9b6b5fb5ec609f5db9076c4a61901aa3a91b0f4aafad32da3bf23164426",
+    "seedEndPoint": "0.0.0.0:50990",
+    "storePath": "store",
+    "genesisPath": "genesis",
+    "logPath": "app.log",
+    "libraryLogPath": "library.log"
+  },
+  "explorer": {
+    "isEnabled": true,
+    "endPoint": "0.0.0.0:5001"
+  }
+}

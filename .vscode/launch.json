@@ -37,14 +37,29 @@
           ]
       },
       {
-          "name": "C#: Libplanet Node",
+          "name": "C#: Libplanet Node - Initialize",
           "type": "coreclr",
           "request": "launch",
           "program": "${workspaceFolder}/src/node/LibplanetConsole.Nodes.Executable/bin/Debug/net8.0/libplanet-node.dll",
           "console": "integratedTerminal",
           "args": [
-            "run"
+            "init",
+            ".data",
+            "--single-node",
+            "--private-key",
+            "d4b0e9b6b5fb5ec609f5db9076c4a61901aa3a91b0f4aafad32da3bf23164426"
           ]
+      },
+      {
+        "name": "C#: Libplanet Node - Start",
+        "type": "coreclr",
+        "request": "launch",
+        "program": "${workspaceFolder}/src/node/LibplanetConsole.Nodes.Executable/bin/Debug/net8.0/libplanet-node.dll",
+        "console": "integratedTerminal",
+        "args": [
+          "start",
+          ".data"
+        ]
       },
       {
           "name": "C#: Libplanet Client",

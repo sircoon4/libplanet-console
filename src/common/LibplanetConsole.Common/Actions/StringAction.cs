@@ -23,8 +23,13 @@ public sealed class StringAction : ActionBase
         var account = world.GetAccount(context.Signer);
 
         var value = account.GetState(StringAddress);
-        var data = Dictionary.Empty.Add("PrevValue", value ?? Null.Value)
-                                   .Add("Value", Value);
+        var data = List.Empty;
+        if (value is List prevValue)
+        {
+            data = prevValue;
+        }
+
+        data = data.Add(Value);
 
         account = account.SetState(StringAddress, data);
         world = world.SetAccount(context.Signer, account);
